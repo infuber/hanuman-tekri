@@ -26,105 +26,101 @@
     <p>WASD to move | Space to jump</p>
   </div>
   <script type="module">
-    import * as THREE from 'https://cdn.skypack.dev/three@0.155.0';
-    import { OrbitControls } from 'https://cdn.skypack.dev/three/examples/jsm/controls/OrbitControls';
+  import * as THREE from 'https://cdn.skypack.dev/three@0.155.0';
 
-    let scene = new THREE.Scene();
-    scene.background = new THREE.Color('#000022');
+  let scene = new THREE.Scene();
+  scene.background = new THREE.Color('#111');
 
-    let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 5, 10);
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 5, 10);
+  camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
 
-    const controls = new OrbitControls(camera, renderer.domElement);
+  // Lighting
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(10, 10, 10);
+  scene.add(light);
+  scene.add(new THREE.AmbientLight(0x404040));
 
-    // Lighting
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(10, 10, 10);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0x404040));
+  // Ground
+  const groundGeometry = new THREE.PlaneGeometry(100, 100);
+  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x223322 });
+  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
 
-    // Ground
-    const groundGeometry = new THREE.PlaneGeometry(100, 100);
-    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x223322 });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    scene.add(ground);
+  // Player
+  const playerGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+  const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
+  const player = new THREE.Mesh(playerGeometry, playerMaterial);
+  player.position.y = 0.5;
+  scene.add(player);
 
-    // Player (Hanuman Ji)
-    const playerGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
-    const player = new THREE.Mesh(playerGeometry, playerMaterial);
-    player.position.y = 0.5;
-    scene.add(player);
+  // Collectibles
+  const symbols = [];
+  const symbolGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+  const symbolMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff });
 
-    // Symbols (Collectibles)
-    const symbols = [];
-    const symbolGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-    const symbolMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff });
+  for (let i = 0; i < 5; i++) {
+    const symbol = new THREE.Mesh(symbolGeometry, symbolMaterial);
+    symbol.position.set((Math.random() - 0.5) * 20, 0.25, (Math.random() - 0.5) * 20);
+    scene.add(symbol);
+    symbols.push(symbol);
+  }
 
-    for (let i = 0; i < 5; i++) {
-      const symbol = new THREE.Mesh(symbolGeometry, symbolMaterial);
-      symbol.position.set(
-        (Math.random() - 0.5) * 40,
-        0.25,
-        (Math.random() - 0.5) * 40
-      );
-      scene.add(symbol);
-      symbols.push(symbol);
-    }
+  // Controls
+  let keys = {};
+  window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+  window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+  let velocity = new THREE.Vector3();
+  let canJump = true;
+
+  function animate() {
+    requestAnimationFrame(animate);
 
     // Movement
-    let keys = {};
-    window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
-    window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
-
-    let velocity = new THREE.Vector3();
-    let canJump = true;
-
-    function animate() {
-      requestAnimationFrame(animate);
-
-      // Simple movement
-      if (keys['w']) velocity.z = -0.1;
-      if (keys['s']) velocity.z = 0.1;
-      if (keys['a']) velocity.x = -0.1;
-      if (keys['d']) velocity.x = 0.1;
-      if (keys[' '] && canJump) {
-        velocity.y = 0.2;
-        canJump = false;
-      }
-
-      player.position.add(velocity);
-      velocity.multiplyScalar(0.9); // friction
-      if (player.position.y > 0.5) {
-        velocity.y -= 0.01; // gravity
-      } else {
-        player.position.y = 0.5;
-        velocity.y = 0;
-        canJump = true;
-      }
-
-      // Collect symbols
-      symbols.forEach((s, i) => {
-        if (s && player.position.distanceTo(s.position) < 1) {
-          scene.remove(s);
-          symbols[i] = null;
-        }
-      });
-
-      renderer.render(scene, camera);
+    if (keys['w']) velocity.z = -0.1;
+    if (keys['s']) velocity.z = 0.1;
+    if (keys['a']) velocity.x = -0.1;
+    if (keys['d']) velocity.x = 0.1;
+    if (keys[' '] && canJump) {
+      velocity.y = 0.2;
+      canJump = false;
     }
 
-    animate();
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+    player.position.add(velocity);
+    velocity.multiplyScalar(0.9); // Friction
+
+    if (player.position.y > 0.5) {
+      velocity.y -= 0.01; // Gravity
+    } else {
+      player.position.y = 0.5;
+      velocity.y = 0;
+      canJump = true;
+    }
+
+    // Collect
+    symbols.forEach((symbol, i) => {
+      if (symbol && player.position.distanceTo(symbol.position) < 1) {
+        scene.remove(symbol);
+        symbols[i] = null;
+      }
     });
-  </script>
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
 </body>
 </html>
